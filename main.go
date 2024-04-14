@@ -4,7 +4,9 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
+	"os"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -21,10 +23,10 @@ type User struct {
 }
 
 type UserHandler struct {
-	userStore UserService
+	userStore Store
 }
 
-type UserService interface {
+type Store interface {
 	GetUserByID(id int) (*User, error)
 	DeleteUserByID(id int) error
 }
@@ -32,6 +34,9 @@ type UserService interface {
 func main() {
 
 	db, err := sql.Open("sqlite3", "./some.db")
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+
+	slog.SetDefault(logger)
 
 	if err != nil {
 		log.Fatal(err)
@@ -52,8 +57,8 @@ func NewUserStore(db *sql.DB) *UserStore {
 	}
 }
 
-func NewUserHandler(user UserService) *UserHandler {
-	return &UserHandler{userStore: user}
+func NewUserHandler(store Store) *UserHandler {
+	return &UserHandler{userStore: store}
 }
 
 func (us *UserStore) GetUserByID(id int) (*User, error) {
@@ -68,6 +73,7 @@ func (us *UserStore) DeleteUserByID(id int) error {
 
 func (uh *UserHandler) registerUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
+	slog.Info("INCOMING REQUEST", "method", r.Method, "path", r.URL.Path, "status", http.StatusOK, "user_agent", r.UserAgent())
 	fmt.Fprintf(w, "Hello from the DI example web server")
 	// not impl
 }
